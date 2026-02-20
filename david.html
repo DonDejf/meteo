@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>David - Meteo Profi Ultimate Fix</title>
+    <title>David - Meteo Profi Ultimate + Historie</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -22,12 +22,12 @@
         .card { 
             flex: 1; border-radius: 20px; padding: 20px; position: relative; overflow: hidden;
             box-shadow: 0 8px 20px rgba(0,0,0,0.4); display: flex; flex-direction: column; justify-content: space-between;
-            min-height: 200px;
+            min-height: 200px; cursor: pointer; transition: transform 0.2s, filter 0.2s;
         }
-
-        /* VÝRAZNÉ VODOZNAKY */
-        .watermark { position: absolute; right: -10px; bottom: -10px; font-size: 8em; opacity: 0.25; transform: rotate(-15deg); pointer-events: none; }
         
+        .card:hover { transform: translateY(-5px); filter: brightness(1.1); }
+
+        .watermark { position: absolute; right: -10px; bottom: -10px; font-size: 8em; opacity: 0.25; transform: rotate(-15deg); pointer-events: none; }
         .temp-card { background: var(--bg-temp); }
         .rain-card { background: var(--bg-rain); }
         .wind-card { background: var(--bg-wind); color: #2d3436; }
@@ -35,7 +35,6 @@
         .title { font-size: 1em; font-weight: bold; border-bottom: 1px solid rgba(255,255,255,0.2); margin-bottom: 10px; z-index: 1; }
         .main-row { display: flex; justify-content: space-between; align-items: baseline; z-index: 1; }
         
-        /* Styl pro velkou teplotu a malou desetinu */
         .huge-temp { font-size: 4.5em; font-weight: 900; letter-spacing: -2px; }
         .decimal { font-size: 0.6em; font-weight: 700; }
         .huge-hum { font-size: 3.5em; font-weight: 700; opacity: 0.9; }
@@ -50,10 +49,7 @@
         .mm-unit { font-size: 0.7em; margin-left: 8px; opacity: 0.9; }
 
         .wind-box { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-        .compass { 
-            width: 110px; height: 110px; border: 5px solid #2d3436; border-radius: 50%; 
-            position: relative; display: flex; align-items: center; justify-content: center;
-        }
+        .compass { width: 110px; height: 110px; border: 5px solid #2d3436; border-radius: 50%; position: relative; display: flex; align-items: center; justify-content: center; }
         .arrow-wrapper { position: absolute; width: 100%; height: 100%; transition: transform 1.5s cubic-bezier(0.4, 0, 0.2, 1); }
         .arrow-triangle { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent; border-bottom: 25px solid red; }
 
@@ -61,9 +57,16 @@
         .extra-col { flex-grow: 1; display: flex; flex-direction: column; gap: 5px; }
         .extra-item { background: rgba(0,0,0,0.08); padding: 5px 10px; border-radius: 10px; font-weight: 900; font-size: 1.05em; display: flex; justify-content: space-between; }
 
+        .chart-container { 
+            width: 100%; max-width: 1400px; background: rgba(0,0,0,0.3); border-radius: 20px; padding: 20px; 
+            box-shadow: 0 8px 20px rgba(0,0,0,0.4); margin-bottom: 20px; 
+            display: none; animation: fadeIn 0.5s ease-out;
+        }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
         .footer { text-align: center; margin-top: 20px; color: rgba(255,255,255,0.6); }
         .station-name { font-size: 2.2em; font-weight: 900; color: white; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 5px; }
-        .update-time { font-size: 1.1em; }
 
         @media (max-width: 900px) { .dashboard { flex-direction: column; } }
     </style>
@@ -71,9 +74,9 @@
 <body>
 
     <div class="dashboard">
-        <div class="card temp-card">
+        <div class="card temp-card" onclick="showChart('temp')">
             <i class="fas fa-thermometer-half watermark"></i>
-            <div class="title">TEPLOTA & VLHKOST</div>
+            <div class="title">TEPLOTA & VLHKOST <i class="fas fa-chart-line" style="float:right"></i></div>
             <div class="main-row">
                 <div class="huge-temp" id="t-display">--<span class="unit">°C</span></div>
                 <div class="huge-hum" id="h-display">--<span class="unit">%</span></div>
@@ -81,9 +84,9 @@
             <div class="feels">Pocitově: <span id="f-val">--</span><span style="font-size:0.7em">°C</span></div>
         </div>
 
-        <div class="card rain-card">
+        <div class="card rain-card" onclick="showChart('rain')">
             <i class="fas fa-cloud-showers-heavy watermark"></i>
-            <div class="title">SRÁŽKY</div>
+            <div class="title">SRÁŽKY <i class="fas fa-chart-line" style="float:right"></i></div>
             <div style="font-size: 4em; font-weight: 900; line-height: 1;" id="r-rate">--<span class="unit">mm/h</span></div>
             <div class="rain-grid">
                 <div class="rain-sub"><label>Dnes</label><span class="rain-val" id="r-day">--</span><span class="mm-unit">mm</span></div>
@@ -92,9 +95,9 @@
             </div>
         </div>
 
-        <div class="card wind-card">
+        <div class="card wind-card" onclick="showChart('wind')">
             <i class="fas fa-wind watermark"></i>
-            <div class="title">VÍTR & TLAK</div>
+            <div class="title">VÍTR & TLAK <i class="fas fa-chart-line" style="float:right"></i></div>
             <div class="wind-box">
                 <div class="compass">
                     <div id="arrow-rot" class="arrow-wrapper"><div class="arrow-triangle"></div></div>
@@ -103,10 +106,15 @@
                 <div class="extra-col">
                     <div class="extra-item"><span>Tlak:</span><span><span id="press">--</span> <small style="font-size:0.5em">hPa</small></span></div>
                     <div class="extra-item"><span>UV Index:</span><span id="uv">--</span></div>
-                    <div class="extra-item"><span>Intenzita:</span><span><span id="solar">--</span> <small style="font-size:0.5em">w/m²</small></span></div>
+                    <div class="extra-item"><span>Záření:</span><span><span id="solar">--</span> <small style="font-size:0.5em">w/m²</small></span></div>
                 </div>
             </div>
         </div>
+    </div>
+
+    <div class="chart-container" id="chart-box">
+        <h3 id="chart-title" style="margin-top:0; color: #fff; text-transform: uppercase; letter-spacing: 1px;">Historie</h3>
+        <canvas id="tempChart"></canvas>
     </div>
 
     <div class="footer">
@@ -117,6 +125,15 @@
     <script>
         const apiKey = 'e0722080abc74485b22080abc7d485bb';
         const stationId = 'IPROVO14';
+        let myChart;
+        let currentDataType = null;
+
+        function formatTemp(value, unit) {
+            if (value === null) return "--";
+            const full = value.toFixed(1);
+            const parts = full.split('.');
+            return `${parts[0]}<span class="decimal">.${parts[1]}</span><span class="unit">${unit}</span>`;
+        }
 
         async function update() {
             try {
@@ -125,12 +142,8 @@
                 const d = json.observations[0];
                 const m = d.metric;
 
-                // Oprava zobrazení teploty (Velké číslo . malá desetina)
                 const tempVal = m.temp;
-                const tempFull = tempVal.toFixed(1);
-                const parts = tempFull.split('.');
-                document.getElementById('t-display').innerHTML = `${parts[0]}<span class="decimal">.${parts[1]}</span><span class="unit">°C</span>`;
-                
+                document.getElementById('t-display').innerHTML = formatTemp(tempVal, '°C');
                 document.getElementById('h-display').innerHTML = `${d.humidity}<span class="unit">%</span>`;
 
                 const tDiv = document.getElementById('t-display');
@@ -153,7 +166,107 @@
                 const now = new Date();
                 document.getElementById('last-update').innerText = "Poslední aktualizace: " + now.getHours() + ":" + now.getMinutes().toString().padStart(2, '0');
 
-            } catch (e) { console.log("Chyba dat."); }
+                if(currentDataType) updateChart(currentDataType);
+            } catch (e) { console.log("Chyba API."); }
+        }
+
+        function showChart(type) {
+            document.getElementById('chart-box').style.display = 'block';
+            currentDataType = type;
+            updateChart(type);
+            document.getElementById('chart-box').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function getTemperatureGradient(ctx, chartArea, yScale, isBackground = false) {
+            const zeroPos = yScale.getPixelForValue(0);
+            const hotPos = yScale.getPixelForValue(25);
+            const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
+            const stopZero = Math.max(0, Math.min(1, (chartArea.bottom - zeroPos) / chartArea.height));
+            const stopHot = Math.max(0, Math.min(1, (chartArea.bottom - hotPos) / chartArea.height));
+            const alpha = isBackground ? '0.2' : '1';
+
+            gradient.addColorStop(0, `rgba(0, 210, 255, ${alpha})`); 
+            gradient.addColorStop(stopZero, `rgba(0, 210, 255, ${alpha})`);
+            gradient.addColorStop(stopZero, `rgba(255, 177, 66, ${alpha})`); 
+            gradient.addColorStop(stopHot, `rgba(255, 177, 66, ${alpha})`);
+            gradient.addColorStop(stopHot, `rgba(255, 0, 0, ${alpha})`); 
+            gradient.addColorStop(1, `rgba(255, 0, 0, ${alpha})`);
+            return gradient;
+        }
+
+        async function updateChart(type) {
+            try {
+                const res = await fetch(`https://api.weather.com/v2/pws/observations/hourly/7day?stationId=${stationId}&format=json&units=m&apiKey=${apiKey}`);
+                const data = await res.json();
+                const last72 = data.observations.slice(-72);
+                
+                const labels = last72.map(o => {
+                    const d = new Date(o.obsTimeLocal);
+                    return d.getHours() + ":00 (" + d.getDate() + "." + (d.getMonth()+1) + ")";
+                });
+
+                let chartData, label, finalBorder, finalBg;
+
+                if (type === 'temp') {
+                    chartData = last72.map(o => o.metric.tempAvg);
+                    label = 'Teplota (°C)';
+                    document.getElementById('chart-title').innerText = "Teplotní trend (72h)";
+                } else if (type === 'rain') {
+                    chartData = last72.map(o => o.metric.precipTotal);
+                    label = 'Srážky (mm)';
+                    finalBorder = '#2e86de';
+                    finalBg = 'rgba(46, 134, 222, 0.2)';
+                    document.getElementById('chart-title').innerText = "Srážkový trend (72h)";
+                } else if (type === 'wind') {
+                    chartData = last72.map(o => o.metric.windspeedAvg);
+                    label = 'Vítr (km/h)';
+                    finalBorder = '#feca57';
+                    finalBg = 'rgba(254, 202, 87, 0.2)';
+                    document.getElementById('chart-title').innerText = "Větrný trend (72h)";
+                }
+
+                if (myChart) myChart.destroy();
+                const ctx = document.getElementById('tempChart').getContext('2d');
+                
+                myChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: label,
+                            data: chartData,
+                            borderColor: type === 'temp' ? (context) => {
+                                const chart = context.chart;
+                                if (!chart.chartArea) return null;
+                                return getTemperatureGradient(chart.ctx, chart.chartArea, chart.scales.y, false);
+                            } : finalBorder,
+                            backgroundColor: type === 'temp' ? (context) => {
+                                const chart = context.chart;
+                                if (!chart.chartArea) return null;
+                                return getTemperatureGradient(chart.ctx, chart.chartArea, chart.scales.y, true);
+                            } : finalBg,
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 0,
+                            pointHoverRadius: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: { 
+                                grid: { 
+                                    color: (context) => context.tick.value === 0 ? 'rgba(0, 210, 255, 0.8)' : 'rgba(255,255,255,0.1)',
+                                    lineWidth: (context) => context.tick.value === 0 ? 3 : 1
+                                }, 
+                                ticks: { color: '#aaa' } 
+                            },
+                            x: { grid: { display: false }, ticks: { color: '#aaa', autoSkip: true, maxTicksLimit: 10 } }
+                        }
+                    }
+                });
+            } catch (e) { console.log("Chyba grafu."); }
         }
 
         update();
