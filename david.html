@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>David - Meteo Profi Final</title>
+    <title>David - Meteo Profi Final V2</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -33,15 +33,14 @@
         .title { font-size: 1em; font-weight: bold; border-bottom: 1px solid rgba(255,255,255,0.2); margin-bottom: 10px; z-index: 1; }
         .main-row { display: flex; justify-content: space-between; align-items: baseline; z-index: 1; }
         
-        /* Styl pro zmenšené desetinné místo */
         .huge-temp { font-size: 4.5em; font-weight: 900; letter-spacing: -2px; }
         .decimal { font-size: 0.6em; font-weight: 700; }
         .huge-hum { font-size: 3.5em; font-weight: 700; opacity: 0.9; }
         .unit { font-size: 0.4em; margin-left: 2px; font-weight: 700; }
 
-        .feels { margin-top: 10px; font-size: 1.4em; font-weight: 800; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 5px; }
+        /* Zvětšená pocitová teplota */
+        .feels { margin-top: 10px; font-size: 1.6em; font-weight: 900; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 5px; }
 
-        /* Kompas s trojúhelníkovou šipkou */
         .wind-box { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
         .compass { 
             width: 110px; height: 110px; border: 5px solid #2d3436; border-radius: 50%; 
@@ -60,8 +59,8 @@
         }
 
         .wind-speed-val { font-size: 1.8em; font-weight: 900; line-height: 1; }
-        .extra-col { flex-grow: 1; display: flex; flex-direction: column; gap: 8px; }
-        .extra-item { background: rgba(0,0,0,0.08); padding: 6px 12px; border-radius: 10px; font-weight: 900; font-size: 1.2em; display: flex; justify-content: space-between; }
+        .extra-col { flex-grow: 1; display: flex; flex-direction: column; gap: 5px; }
+        .extra-item { background: rgba(0,0,0,0.08); padding: 5px 10px; border-radius: 10px; font-weight: 900; font-size: 1.1em; display: flex; justify-content: space-between; }
 
         @media (max-width: 900px) {
             .dashboard { flex-direction: column; }
@@ -76,21 +75,21 @@
             <div class="title">TEPLOTA & VLHKOST</div>
             <div class="main-row">
                 <div class="huge-temp" id="t-display">--<span class="unit">°C</span></div>
-                <div class="huge-hum" id="h-val">--<span class="unit">%</span></div>
+                <div class="huge-hum" id="h-display">--<span class="unit">%</span></div>
             </div>
-            <div class="feels">Pocitově : <span id="f-val">--</span><span style="font-size:0.8em">°C</span></div>
+            <div class="feels">Pocitově: <span id="f-val">--</span><span style="font-size:0.7em">°C</span></div>
         </div>
 
         <div class="card rain-card">
             <i class="fas fa-cloud-showers-heavy watermark"></i>
             <div class="title">SRÁŽKY</div>
             <div style="font-size: 4.5em; font-weight: 900;" id="r-rate">--<span class="unit">mm/h</span></div>
-            <div style="font-size: 1.2em; font-weight: bold; margin-top: 10px;">Dnes: <span id="r-day">--</span> mm</div>
+            <div style="font-size: 1.3em; font-weight: bold; margin-top: 10px;">Dnes: <span id="r-day">--</span> mm</div>
         </div>
 
         <div class="card wind-card">
             <i class="fas fa-wind watermark"></i>
-            <div class="title">VÍTR & TLAK</div>
+            <div class="title">VÍTR & TLAK & SLUNCE</div>
             <div class="wind-box">
                 <div class="compass">
                     <div id="arrow-rot" class="arrow-wrapper">
@@ -102,8 +101,9 @@
                     </div>
                 </div>
                 <div class="extra-col">
-                    <div class="extra-item"><span>Tlak :</span><span><span id="press">--</span> <small style="font-size:0.6em">hPa</small></span></div>
-                    <div class="extra-item"><span>UV :</span><span id="uv">--</span></div>
+                    <div class="extra-item"><span>Tlak:</span><span><span id="press">--</span> <small style="font-size:0.5em">hPa</small></span></div>
+                    <div class="extra-item"><span>UV:</span><span id="uv">--</span></div>
+                    <div class="extra-item"><span>Zář:</span><span><span id="solar">--</span> <small style="font-size:0.5em">w/m²</small></span></div>
                 </div>
             </div>
         </div>
@@ -120,10 +120,13 @@
                 const d = json.observations[0];
                 const m = d.metric;
 
-                // Formátování teploty (rozdělení na celé a desetinné)
+                // Teplota s menší tečkou
                 const tempFull = m.temp.toFixed(1);
                 const parts = tempFull.split('.');
                 document.getElementById('t-display').innerHTML = `${parts[0]}<span class="decimal">.${parts[1]}</span><span class="unit">°C</span>`;
+
+                // Vlhkost s jednotkou
+                document.getElementById('h-display').innerHTML = `${d.humidity}<span class="unit">%</span>`;
 
                 // Barva teploty
                 const tVal = m.temp;
@@ -132,21 +135,21 @@
                 else if(tVal > 25) tDiv.style.color = 'var(--temp-hot)';
                 else tDiv.style.color = 'white';
 
-                document.getElementById('h-val').innerText = d.humidity;
                 document.getElementById('f-val').innerText = m.windChill.toFixed(1);
                 document.getElementById('r-rate').innerHTML = m.precipRate.toFixed(1) + '<span class="unit">mm/h</span>';
                 document.getElementById('r-day').innerText = m.precipTotal.toFixed(1);
                 document.getElementById('w-speed').innerText = m.windSpeed.toFixed(1);
                 document.getElementById('press').innerText = Math.round(m.pressure);
                 document.getElementById('uv').innerText = d.uv || 0;
+                document.getElementById('solar').innerText = d.solarRadiation || 0;
 
                 // Rotace šipky
                 document.getElementById('arrow-rot').style.transform = `rotate(${d.winddir}deg)`;
-            } catch (e) { console.log("Chyba při načítání dat."); }
+            } catch (e) { console.log("Chyba dat."); }
         }
 
         update();
-        setInterval(update, 300000); // 5 minut
+        setInterval(update, 300000);
     </script>
 </body>
 </html>
