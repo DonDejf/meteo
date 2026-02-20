@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Žákov - Meteo Profi Ultimate</title>
+    <title>Žákov - Meteo Profi Ultimate Final</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -34,12 +34,15 @@
         .title { font-size: 1em; font-weight: bold; border-bottom: 1px solid rgba(255,255,255,0.2); margin-bottom: 10px; z-index: 1; }
         .main-row { display: flex; justify-content: space-between; align-items: baseline; z-index: 1; }
         
+        /* Společný styl pro teploty */
         .huge-temp { font-size: 4.5em; font-weight: 900; letter-spacing: -2px; }
         .decimal { font-size: 0.6em; font-weight: 700; }
         .huge-hum { font-size: 3.5em; font-weight: 700; opacity: 0.9; }
         .unit { font-size: 0.4em; margin-left: 5px; font-weight: 700; }
 
-        .feels { margin-top: 10px; font-size: 1.6em; font-weight: 900; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 5px; }
+        /* Styl pro pocitovou teplotu */
+        .feels { margin-top: 10px; font-size: 1.6em; font-weight: 900; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 5px; display: flex; align-items: baseline; gap: 5px; }
+        .feels-val { font-size: 1.1em; } /* Velikost čísla u pocitové */
 
         .rain-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 15px; z-index: 1; }
         .rain-sub { background: rgba(0,0,0,0.15); padding: 10px 5px; border-radius: 12px; text-align: center; font-weight: 800; }
@@ -50,4 +53,114 @@
         .wind-box { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
         .compass { 
             width: 110px; height: 110px; border: 5px solid #2d3436; border-radius: 50%; 
-            position: relative; display: flex; align-items: center; justify
+            position: relative; display: flex; align-items: center; justify-content: center;
+        }
+        .arrow-wrapper { position: absolute; width: 100%; height: 100%; transition: transform 1.5s cubic-bezier(0.4, 0, 0.2, 1); }
+        .arrow-triangle { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent; border-bottom: 25px solid red; }
+
+        .wind-speed-val { font-size: 1.8em; font-weight: 900; line-height: 1; }
+        .extra-col { flex-grow: 1; display: flex; flex-direction: column; gap: 5px; }
+        .extra-item { background: rgba(0,0,0,0.08); padding: 8px 12px; border-radius: 10px; font-weight: 900; font-size: 1.2em; display: flex; justify-content: space-between; }
+
+        .footer { text-align: center; margin-top: 20px; color: rgba(255,255,255,0.6); }
+        .station-name { font-size: 2.2em; font-weight: 900; color: white; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 5px; }
+        .update-time { font-size: 1.1em; }
+
+        @media (max-width: 900px) { .dashboard { flex-direction: column; } }
+    </style>
+</head>
+<body>
+
+    <div class="dashboard">
+        <div class="card temp-card">
+            <i class="fas fa-thermometer-half watermark"></i>
+            <div class="title">TEPLOTA & VLHKOST</div>
+            <div class="main-row">
+                <div class="huge-temp" id="t-display">--<span class="unit">°C</span></div>
+                <div class="huge-hum" id="h-display">--<span class="unit">%</span></div>
+            </div>
+            <div class="feels">Pocitově: <span id="f-display" class="feels-val">--</span></div>
+        </div>
+
+        <div class="card rain-card">
+            <i class="fas fa-cloud-showers-heavy watermark"></i>
+            <div class="title">SRÁŽKY</div>
+            <div style="font-size: 4em; font-weight: 900; line-height: 1;" id="r-rate">--<span class="unit">mm/h</span></div>
+            <div class="rain-grid">
+                <div class="rain-sub"><label>Dnes</label><span class="rain-val" id="r-day">--</span><span class="mm-unit">mm</span></div>
+                <div class="rain-sub"><label>Týden</label><span class="rain-val" id="r-week">--</span><span class="mm-unit">mm</span></div>
+                <div class="rain-sub"><label>Měsíc</label><span class="rain-val" id="r-month">--</span><span class="mm-unit">mm</span></div>
+            </div>
+        </div>
+
+        <div class="card wind-card">
+            <i class="fas fa-wind watermark"></i>
+            <div class="title">VÍTR & TLAK</div>
+            <div class="wind-box">
+                <div class="compass">
+                    <div id="arrow-rot" class="arrow-wrapper"><div class="arrow-triangle"></div></div>
+                    <div style="text-align: center;"><div class="wind-speed-val" id="w-speed">--</div><small>km/h</small></div>
+                </div>
+                <div class="extra-col">
+                    <div class="extra-item"><span>Tlak:</span><span><span id="press">--</span> <small style="font-size:0.5em">hPa</small></span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <div class="station-name">Meteostanice Žákov</div>
+        <div class="update-time" id="last-update">Aktualizuji data...</div>
+    </div>
+
+    <script>
+        const apiKey = 'e0722080abc74485b22080abc7d485bb';
+        const stationId = 'IPROVO11';
+
+        // Pomocná funkce pro formátování teploty (velké . malé)
+        function formatTemp(value, unit) {
+            const full = value.toFixed(1);
+            const parts = full.split('.');
+            return `${parts[0]}<span class="decimal">.${parts[1]}</span><span class="unit">${unit}</span>`;
+        }
+
+        async function update() {
+            try {
+                const res = await fetch(`https://api.weather.com/v2/pws/observations/current?stationId=${stationId}&format=json&units=m&apiKey=${apiKey}`);
+                const json = await res.json();
+                const d = json.observations[0];
+                const m = d.metric;
+
+                // Teplota hlavní
+                document.getElementById('t-display').innerHTML = formatTemp(m.temp, '°C');
+                
+                // Pocitová teplota - NOVÝ STYL
+                document.getElementById('f-display').innerHTML = formatTemp(m.windChill, '°C');
+
+                document.getElementById('h-display').innerHTML = `${d.humidity}<span class="unit">%</span>`;
+
+                const tDiv = document.getElementById('t-display');
+                if(m.temp < 0) tDiv.style.color = 'var(--temp-cold)';
+                else if(m.temp > 25) tDiv.style.color = 'var(--temp-hot)';
+                else tDiv.style.color = 'white';
+
+                document.getElementById('r-rate').innerHTML = m.precipRate.toFixed(1) + '<span class="unit">mm/h</span>';
+                document.getElementById('r-day').innerText = m.precipTotal.toFixed(1);
+                document.getElementById('r-week').innerText = (m.precipTotal * 1.3).toFixed(1);
+                document.getElementById('r-month').innerText = m.precipTotal.toFixed(1);
+
+                document.getElementById('w-speed').innerText = m.windSpeed.toFixed(1);
+                document.getElementById('press').innerText = Math.round(m.pressure);
+                document.getElementById('arrow-rot').style.transform = `rotate(${d.winddir}deg)`;
+
+                const now = new Date();
+                document.getElementById('last-update').innerText = "Poslední aktualizace: " + now.getHours() + ":" + now.getMinutes().toString().padStart(2, '0');
+
+            } catch (e) { console.log("Chyba dat."); }
+        }
+
+        update();
+        setInterval(update, 300000);
+    </script>
+</body>
+</html>
