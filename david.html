@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>David - Meteo Profi Final V2</title>
+    <title>David - Meteo Profi Final V4</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -14,15 +14,15 @@
 
         body { 
             font-family: 'Segoe UI', sans-serif; background: #1e272e; color: white; margin: 0; padding: 10px;
-            display: flex; flex-direction: column; align-items: center;
+            display: flex; flex-direction: column; align-items: center; min-height: 100vh;
         }
 
-        .dashboard { display: flex; flex-direction: row; gap: 10px; width: 100%; max-width: 1400px; }
+        .dashboard { display: flex; flex-direction: row; gap: 10px; width: 100%; max-width: 1400px; margin-bottom: 20px; }
 
         .card { 
             flex: 1; border-radius: 20px; padding: 20px; position: relative; overflow: hidden;
             box-shadow: 0 8px 20px rgba(0,0,0,0.4); display: flex; flex-direction: column; justify-content: space-between;
-            min-height: 180px; cursor: pointer;
+            min-height: 180px;
         }
 
         .watermark { position: absolute; right: -10px; bottom: -10px; font-size: 8em; opacity: 0.12; transform: rotate(-15deg); pointer-events: none; }
@@ -38,7 +38,6 @@
         .huge-hum { font-size: 3.5em; font-weight: 700; opacity: 0.9; }
         .unit { font-size: 0.4em; margin-left: 2px; font-weight: 700; }
 
-        /* Zvětšená pocitová teplota */
         .feels { margin-top: 10px; font-size: 1.6em; font-weight: 900; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 5px; }
 
         .wind-box { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
@@ -62,6 +61,11 @@
         .extra-col { flex-grow: 1; display: flex; flex-direction: column; gap: 5px; }
         .extra-item { background: rgba(0,0,0,0.08); padding: 5px 10px; border-radius: 10px; font-weight: 900; font-size: 1.1em; display: flex; justify-content: space-between; }
 
+        /* Styl pro patičku s názvem a časem */
+        .footer { text-align: center; margin-top: 20px; color: rgba(255,255,255,0.6); }
+        .station-name { font-size: 2em; font-weight: 900; color: white; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 5px; }
+        .update-time { font-size: 1.1em; font-weight: 400; }
+
         @media (max-width: 900px) {
             .dashboard { flex-direction: column; }
         }
@@ -76,80 +80,3 @@
             <div class="main-row">
                 <div class="huge-temp" id="t-display">--<span class="unit">°C</span></div>
                 <div class="huge-hum" id="h-display">--<span class="unit">%</span></div>
-            </div>
-            <div class="feels">Pocitově: <span id="f-val">--</span><span style="font-size:0.7em">°C</span></div>
-        </div>
-
-        <div class="card rain-card">
-            <i class="fas fa-cloud-showers-heavy watermark"></i>
-            <div class="title">SRÁŽKY</div>
-            <div style="font-size: 4.5em; font-weight: 900;" id="r-rate">--<span class="unit">mm/h</span></div>
-            <div style="font-size: 1.3em; font-weight: bold; margin-top: 10px;">Dnes: <span id="r-day">--</span> mm</div>
-        </div>
-
-        <div class="card wind-card">
-            <i class="fas fa-wind watermark"></i>
-            <div class="title">VÍTR & TLAK & SLUNCE</div>
-            <div class="wind-box">
-                <div class="compass">
-                    <div id="arrow-rot" class="arrow-wrapper">
-                        <div class="arrow-triangle"></div>
-                    </div>
-                    <div style="text-align: center;">
-                        <div class="wind-speed-val" id="w-speed">--</div>
-                        <small>km/h</small>
-                    </div>
-                </div>
-                <div class="extra-col">
-                    <div class="extra-item"><span>Tlak:</span><span><span id="press">--</span> <small style="font-size:0.5em">hPa</small></span></div>
-                    <div class="extra-item"><span>UV:</span><span id="uv">--</span></div>
-                    <div class="extra-item"><span>Zář:</span><span><span id="solar">--</span> <small style="font-size:0.5em">w/m²</small></span></div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        const apiKey = 'e0722080abc74485b22080abc7d485bb';
-        const stationId = 'IPROVO14';
-
-        async function update() {
-            try {
-                const res = await fetch(`https://api.weather.com/v2/pws/observations/current?stationId=${stationId}&format=json&units=m&apiKey=${apiKey}`);
-                const json = await res.json();
-                const d = json.observations[0];
-                const m = d.metric;
-
-                // Teplota s menší tečkou
-                const tempFull = m.temp.toFixed(1);
-                const parts = tempFull.split('.');
-                document.getElementById('t-display').innerHTML = `${parts[0]}<span class="decimal">.${parts[1]}</span><span class="unit">°C</span>`;
-
-                // Vlhkost s jednotkou
-                document.getElementById('h-display').innerHTML = `${d.humidity}<span class="unit">%</span>`;
-
-                // Barva teploty
-                const tVal = m.temp;
-                const tDiv = document.getElementById('t-display');
-                if(tVal < 0) tDiv.style.color = 'var(--temp-cold)';
-                else if(tVal > 25) tDiv.style.color = 'var(--temp-hot)';
-                else tDiv.style.color = 'white';
-
-                document.getElementById('f-val').innerText = m.windChill.toFixed(1);
-                document.getElementById('r-rate').innerHTML = m.precipRate.toFixed(1) + '<span class="unit">mm/h</span>';
-                document.getElementById('r-day').innerText = m.precipTotal.toFixed(1);
-                document.getElementById('w-speed').innerText = m.windSpeed.toFixed(1);
-                document.getElementById('press').innerText = Math.round(m.pressure);
-                document.getElementById('uv').innerText = d.uv || 0;
-                document.getElementById('solar').innerText = d.solarRadiation || 0;
-
-                // Rotace šipky
-                document.getElementById('arrow-rot').style.transform = `rotate(${d.winddir}deg)`;
-            } catch (e) { console.log("Chyba dat."); }
-        }
-
-        update();
-        setInterval(update, 300000);
-    </script>
-</body>
-</html>
