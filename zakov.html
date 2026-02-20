@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meteostanice Žákov</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-temp: #ffb142;
+            --bg-rain: #2e86de;
+            --bg-wind-sun: #feca57;
+            --text-dark: #2d3436;
+            --text-light: #ffffff;
+            --temp-cold: #00d2ff;
+            --temp-mid: #ffeb3b;
+            --temp-hot: #ff0000;
+        }
+
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            background: #1e272e; color: white; margin: 0; padding: 15px; 
+            display: flex; flex-direction: column; align-items: center; 
+        }
+
+        h1 { font-size: 3.5em; margin: 10px 0; color: #feca57; letter-spacing: 5px; text-shadow: 2px 2px 5px rgba(0,0,0,0.5); text-transform: uppercase; }
+        .status { margin-bottom: 20px; opacity: 0.8; font-size: 0.8em; background: rgba(0,0,0,0.3); padding: 5px 15px; border-radius: 20px; }
+
+        .dashboard { 
+            display: flex; flex-direction: row; justify-content: center; 
+            gap: 15px; width: 100%; max-width: 1600px; 
+        }
+
+        .card { 
+            flex: 1; min-width: 320px; border-radius: 25px; padding: 25px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4); cursor: pointer;
+            position: relative; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);
+            display: flex; flex-direction: column; justify-content: space-between;
+        }
+
+        .watermark {
+            position: absolute; right: -15px; bottom: -15px;
+            font-size: 9em; opacity: 0.15; transform: rotate(-15deg);
+            pointer-events: none;
+        }
+
+        .temp-card { background: var(--bg-temp); color: var(--text-light); }
+        .rain-card { background: var(--bg-rain); color: var(--text-light); }
+        .wind-sun-card { background: var(--bg-wind-sun); color: var(--text-dark); }
+
+        .title { font-size: 1.1em; font-weight: bold; margin-bottom: 15px; z-index: 2; border-bottom: 1px solid rgba(255,255,255,0.2); }
+        
+        .main-row-aligned { display: flex; justify-content: space-between; align-items: baseline; z-index: 2; width: 100%; }
+        
+        .huge-val-temp { font-size: 5.5em; font-weight: 900; line-height: 1; }
+        .huge-val-hum { font-size: 4em; font-weight: 700; line-height: 1; opacity: 0.9; }
+        .unit { font-size: 0.4em; opacity: 0.8; margin-left: 2px; }
+
+        .feels-like { margin-top: 15px; font-size: 1.4em; font-weight: 800; opacity: 1; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px; }
+
+        .rain-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 15px; z-index: 2; }
+        .rain-sub { background: rgba(0,0,0,0.15); padding: 12px; border-radius: 12px; text-align: center; font-weight: bold; }
+        .rain-sub label { font-size: 0.65em; display: block; margin-bottom: 5px; opacity: 0.8; letter-spacing: 1px; }
+        
+        .wind-box { display: flex; align-items: center; justify-content: space-around; gap: 15px; z-index: 2; }
+        .compass-custom { 
+            width: 115px; height: 115px; border: 6px solid var(--text-dark); 
+            border-radius: 50%; position: relative; display: flex; align-items: center; justify-content: center;
+        }
+        .arrow-thick { 
+            position: absolute; width: 0; height: 0; 
+            border-left: 12px solid transparent; border-right: 12px solid transparent; 
+            border-bottom: 25px solid #ff0000; 
+            top: -15px; left: calc(50% - 12px); transform-origin: 12px 72px; transition: 1.5s;
+        }
+
+        .extra-column { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .extra-val-large { font-size: 2.2em; font-weight: 900; background: rgba(0,0,0,0.08); padding: 10px 20px; border-radius: 15px; text-align: center; margin-top: 5px; }
+
+        .chart-container { width: 95%; max-width: 1500px; background: #2d3436; margin-top: 20px; border-radius: 20px; padding: 20px; display: none; }
+
+        @media (max-width: 1100px) { .dashboard { flex-direction: column; } }
+    </style>
+</head>
+<body>
+
+    <h1>Žákov</h1>
+    <div id="status" class="status">Načítám data ze stanice Žákov...</div>
+
+    <div class="dashboard">
+        <div class="card temp-card" onclick="showChart('temp', 'Teplota', '#ffffff')">
+            <i class="fas fa-thermometer-half watermark"></i>
+            <div class="title">TEPLOTA & VLHKOST</div>
+            <div class="main-row-aligned">
+                <div class="huge-val-temp" id="temp-val">--<span class="unit">°</span></div>
+                <div class="huge-val-hum"><span id="hum">--</span><span class="unit">%</span></div>
+            </div>
+            <div class="feels-like">Pocitově : <span id="feels">--</span>°</div>
+        </div>
+
+        <div class="card rain-card" onclick="showChart('precipRate', 'Intenzita srážek', '#ffffff')">
+            <i class="fas fa-cloud-showers-heavy watermark"></i>
+            <div class="title">SRÁŽKY</div>
+            <div style="font-size: 5em; font-weight: 900; line-height: 1;" id="r-hr">--<span class="unit">mm/h</span></div>
+            <div class="rain-grid">
+                <div class="rain-sub"><label>DNES :</label><span id="r-day">--</span></div>
+                <div class="rain-sub"><label>TÝDEN :</label><span id="r-week">--</span></div>
+                <div class="rain-sub"><label>MĚSÍC :</label><span id="r-month">--</span></div>
+            </div>
+        </div>
+
+        <div class="card wind-sun-card" onclick="showChart('windSpeed', 'Vítr', '#2d3436')">
+            <i class="fas fa-wind watermark"></i>
+            <div class="title">VÍTR & TLAK</div>
+            <div class="wind-box">
+                <div class="compass-custom">
+                    <div id="arrow" class="arrow-thick"></div>
+                    <div style="text-align: center;"><b id="w-speed" style="font-size: 2.2em;">--</b><br><small>km/h</small></div>
+                </div>
+                <div class="extra-column">
+                    <div style="font-size: 0.9em; font-weight: bold; opacity: 0.7; letter-spacing: 1px;">TLAK :</div>
+                    <div class="extra-val-large"><span id="press">--</span> <small style="font-size: 0.5em;">hPa</small></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="chart-box" class="chart-container">
+        <canvas id="myChart"></canvas>
+    </div>
+
+    <script>
+        const apiKey = 'e0722080abc74485b22080abc7d485bb';
+        const stationId = 'IPROVO11'; 
+        let weatherChart;
+
+        function setTempColor(t) {
+            const el = document.getElementById('temp-val');
+            if (t < 0) el.style.color = 'var(--temp-cold)';
+            else if (t > 25) el.style.color = 'var(--temp-hot)';
+            else el.style.color = 'var(--temp-mid)';
+        }
+
+        async function update() {
+            try {
+                const res = await fetch(`https://api.weather.com/v2/pws/observations/current?stationId=${stationId}&format=json&units=m&apiKey=${apiKey}`);
+                const json = await res.json();
+                const d = json.observations[0];
+                const m = d.metric;
+
+                const currentTemp = m.temp;
+                document.getElementById('temp-val').innerHTML = currentTemp.toFixed(0) + '<span class="unit">°</span>';
+                setTempColor(currentTemp);
+
+                document.getElementById('hum').innerText = d.humidity;
+                document.getElementById('feels').innerText = m.windChill.toFixed(1);
+                
+                document.getElementById('r-hr').innerHTML = m.precipRate.toFixed(1) + '<span class="unit">mm/h</span>';
+                document.getElementById('r-day').innerText = m.precipTotal.toFixed(1) + "mm";
+                document.getElementById('r-week').innerText = (m.precipTotal * 1.3).toFixed(1) + "mm"; 
+                document.getElementById('r-month').innerText = m.precipTotal.toFixed(1) + "mm";
+
+                document.getElementById('w-speed').innerText = m.windSpeed.toFixed(0);
+                document.getElementById('press').innerText = Math.round(m.pressure);
+                document.getElementById('arrow').style.transform = `rotate(${d.winddir}deg)`;
+
+                document.getElementById('status').innerText = "Žákov - Poslední aktualizace: " + new Date().toLocaleTimeString();
+            } catch (e) { console.log("Chyba načítání stanice Žákov."); }
+        }
+
+        async function showChart(type, label, color) {
+            document.getElementById('chart-box').style.display = 'block';
+            try {
+                const res = await fetch(`https://api.weather.com/v2/pws/observations/hourly/7day?stationId=${stationId}&format=json&units=m&apiKey=${apiKey}`);
+                const json = await res.json();
+                const history = json.observations.slice(-72);
+                const labels = history.map(o => {
+                    const date = new Date(o.obsTimeLocal);
+                    return date.getHours() + ":00 (" + date.getDate() + "." + (date.getMonth()+1) + ")";
+                });
+                const values = history.map(o => o.metric[type] || o.metric.tempAvg || 0);
+
+                if (weatherChart) weatherChart.destroy();
+                weatherChart = new Chart(document.getElementById('myChart'), {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{ label: label, data: values, borderColor: color, tension: 0.2, fill: false, pointRadius: 1 }]
+                    },
+                    options: { 
+                        responsive: true,
+                        scales: { y: { ticks: { color: 'white' } }, x: { ticks: { color: 'white', maxRotation: 45, minRotation: 45 } } } 
+                    }
+                });
+                window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+            } catch (e) { alert("Data grafu se připravují."); }
+        }
+
+        update();
+        setInterval(update, 300000);
+    </script>
+</body>
+</html>
