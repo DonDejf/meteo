@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Žákov - Meteo Profi Ultimate Final</title>
+    <title>Žákov - Meteo Profi Ultimate + Historie</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -26,7 +26,6 @@
         }
 
         .watermark { position: absolute; right: -10px; bottom: -10px; font-size: 8em; opacity: 0.25; transform: rotate(-15deg); pointer-events: none; }
-        
         .temp-card { background: var(--bg-temp); }
         .rain-card { background: var(--bg-rain); }
         .wind-card { background: var(--bg-wind); color: #2d3436; }
@@ -34,15 +33,13 @@
         .title { font-size: 1em; font-weight: bold; border-bottom: 1px solid rgba(255,255,255,0.2); margin-bottom: 10px; z-index: 1; }
         .main-row { display: flex; justify-content: space-between; align-items: baseline; z-index: 1; }
         
-        /* Společný styl pro teploty */
         .huge-temp { font-size: 4.5em; font-weight: 900; letter-spacing: -2px; }
         .decimal { font-size: 0.6em; font-weight: 700; }
         .huge-hum { font-size: 3.5em; font-weight: 700; opacity: 0.9; }
         .unit { font-size: 0.4em; margin-left: 5px; font-weight: 700; }
 
-        /* Styl pro pocitovou teplotu */
-        .feels { margin-top: 10px; font-size: 1.6em; font-weight: 900; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 5px; display: flex; align-items: baseline; gap: 5px; }
-        .feels-val { font-size: 1.1em; } /* Velikost čísla u pocitové */
+        .feels { margin-top: 10px; font-size: 1.6em; font-weight: 900; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 5px; display: flex; align-items: baseline; gap: 8px; }
+        .feels-val { font-size: 1.1em; }
 
         .rain-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 15px; z-index: 1; }
         .rain-sub { background: rgba(0,0,0,0.15); padding: 10px 5px; border-radius: 12px; text-align: center; font-weight: 800; }
@@ -51,10 +48,7 @@
         .mm-unit { font-size: 0.7em; margin-left: 8px; opacity: 0.9; }
 
         .wind-box { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-        .compass { 
-            width: 110px; height: 110px; border: 5px solid #2d3436; border-radius: 50%; 
-            position: relative; display: flex; align-items: center; justify-content: center;
-        }
+        .compass { width: 110px; height: 110px; border: 5px solid #2d3436; border-radius: 50%; position: relative; display: flex; align-items: center; justify-content: center; }
         .arrow-wrapper { position: absolute; width: 100%; height: 100%; transition: transform 1.5s cubic-bezier(0.4, 0, 0.2, 1); }
         .arrow-triangle { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent; border-bottom: 25px solid red; }
 
@@ -62,9 +56,11 @@
         .extra-col { flex-grow: 1; display: flex; flex-direction: column; gap: 5px; }
         .extra-item { background: rgba(0,0,0,0.08); padding: 8px 12px; border-radius: 10px; font-weight: 900; font-size: 1.2em; display: flex; justify-content: space-between; }
 
-        .footer { text-align: center; margin-top: 20px; color: rgba(255,255,255,0.6); }
+        /* Kontejner pro graf */
+        .chart-container { width: 100%; max-width: 1400px; background: rgba(0,0,0,0.3); border-radius: 20px; padding: 20px; box-shadow: 0 8px 20px rgba(0,0,0,0.4); margin-bottom: 20px; }
+        
+        .footer { text-align: center; margin-bottom: 30px; color: rgba(255,255,255,0.6); }
         .station-name { font-size: 2.2em; font-weight: 900; color: white; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 5px; }
-        .update-time { font-size: 1.1em; }
 
         @media (max-width: 900px) { .dashboard { flex-direction: column; } }
     </style>
@@ -108,16 +104,20 @@
         </div>
     </div>
 
+    <div class="chart-container">
+        <canvas id="tempChart"></canvas>
+    </div>
+
     <div class="footer">
         <div class="station-name">Meteostanice Žákov</div>
-        <div class="update-time" id="last-update">Aktualizuji data...</div>
+        <div id="last-update">Aktualizuji data...</div>
     </div>
 
     <script>
         const apiKey = 'e0722080abc74485b22080abc7d485bb';
         const stationId = 'IPROVO11';
+        let myChart;
 
-        // Pomocná funkce pro formátování teploty (velké . malé)
         function formatTemp(value, unit) {
             const full = value.toFixed(1);
             const parts = full.split('.');
@@ -126,17 +126,14 @@
 
         async function update() {
             try {
+                // Aktuální data
                 const res = await fetch(`https://api.weather.com/v2/pws/observations/current?stationId=${stationId}&format=json&units=m&apiKey=${apiKey}`);
                 const json = await res.json();
                 const d = json.observations[0];
                 const m = d.metric;
 
-                // Teplota hlavní
                 document.getElementById('t-display').innerHTML = formatTemp(m.temp, '°C');
-                
-                // Pocitová teplota - NOVÝ STYL
                 document.getElementById('f-display').innerHTML = formatTemp(m.windChill, '°C');
-
                 document.getElementById('h-display').innerHTML = `${d.humidity}<span class="unit">%</span>`;
 
                 const tDiv = document.getElementById('t-display');
@@ -156,7 +153,45 @@
                 const now = new Date();
                 document.getElementById('last-update').innerText = "Poslední aktualizace: " + now.getHours() + ":" + now.getMinutes().toString().padStart(2, '0');
 
-            } catch (e) { console.log("Chyba dat."); }
+                updateChart();
+            } catch (e) { console.log("Chyba."); }
+        }
+
+        async function updateChart() {
+            try {
+                const res = await fetch(`https://api.weather.com/v2/pws/observations/hourly/7day?stationId=${stationId}&format=json&units=m&apiKey=${apiKey}`);
+                const data = await res.json();
+                const last72 = data.observations.slice(-72);
+                
+                const labels = last72.map(o => new Date(o.obsTimeLocal).getHours() + ":00");
+                const temps = last72.map(o => o.metric.tempAvg);
+
+                if (myChart) myChart.destroy();
+                const ctx = document.getElementById('tempChart').getContext('2d');
+                myChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Teplota (°C)',
+                            data: temps,
+                            borderColor: '#ffb142',
+                            backgroundColor: 'rgba(255, 177, 66, 0.2)',
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: { grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: '#aaa' } },
+                            x: { grid: { display: false }, ticks: { color: '#aaa', maxRotation: 0, autoSkip: true, maxTicksLimit: 12 } }
+                        }
+                    }
+                });
+            } catch (e) { console.log("Graf error."); }
         }
 
         update();
