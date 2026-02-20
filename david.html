@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>David - Meteo Profi 1.2</title>
+    <title>David - Meteo Profi Final</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -33,71 +33,69 @@
         .title { font-size: 1em; font-weight: bold; border-bottom: 1px solid rgba(255,255,255,0.2); margin-bottom: 10px; z-index: 1; }
         .main-row { display: flex; justify-content: space-between; align-items: baseline; z-index: 1; }
         
+        /* Styl pro zmenšené desetinné místo */
         .huge-temp { font-size: 4.5em; font-weight: 900; letter-spacing: -2px; }
+        .decimal { font-size: 0.6em; font-weight: 700; }
         .huge-hum { font-size: 3.5em; font-weight: 700; opacity: 0.9; }
-        .unit { font-size: 0.4em; margin-left: 2px; }
+        .unit { font-size: 0.4em; margin-left: 2px; font-weight: 700; }
 
         .feels { margin-top: 10px; font-size: 1.4em; font-weight: 800; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 5px; }
 
-        .rain-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 10px; }
-        .rain-sub { background: rgba(0,0,0,0.15); padding: 8px; border-radius: 10px; text-align: center; font-size: 0.9em; font-weight: bold; }
-        .rain-sub label { font-size: 0.6em; display: block; opacity: 0.8; margin-bottom: 2px; }
-
+        /* Kompas s trojúhelníkovou šipkou */
         .wind-box { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
         .compass { 
             width: 110px; height: 110px; border: 5px solid #2d3436; border-radius: 50%; 
             position: relative; display: flex; align-items: center; justify-content: center;
         }
-        .arrow-red { 
-            position: absolute; width: 6px; height: 50px; background: #ff0000;
-            top: 5px; left: calc(50% - 3px); transform-origin: center 50px;
-            clip-path: polygon(50% 0%, 0% 100%, 100% 100%); transition: 1.5s;
+        .arrow-wrapper {
+            position: absolute; width: 100%; height: 100%;
+            transition: transform 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .arrow-triangle {
+            position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+            width: 0; height: 0; 
+            border-left: 15px solid transparent;
+            border-right: 15px solid transparent;
+            border-bottom: 25px solid red;
         }
 
-        /* Upravená velikost pro vítr s desetinou čárkou */
         .wind-speed-val { font-size: 1.8em; font-weight: 900; line-height: 1; }
-
         .extra-col { flex-grow: 1; display: flex; flex-direction: column; gap: 8px; }
         .extra-item { background: rgba(0,0,0,0.08); padding: 6px 12px; border-radius: 10px; font-weight: 900; font-size: 1.2em; display: flex; justify-content: space-between; }
 
-        .chart-container { width: 95%; max-width: 1300px; background: #2d3436; margin-top: 20px; border-radius: 20px; padding: 20px; display: none; }
-
         @media (max-width: 900px) {
             .dashboard { flex-direction: column; }
-            body { zoom: 1.05; }
         }
     </style>
 </head>
 <body>
 
     <div class="dashboard">
-        <div class="card temp-card" onclick="showChart('temp', 'Teplota', '#ffffff')">
+        <div class="card temp-card">
             <i class="fas fa-thermometer-half watermark"></i>
             <div class="title">TEPLOTA & VLHKOST</div>
             <div class="main-row">
-                <div class="huge-temp" id="t-val">--<span class="unit">°</span></div>
+                <div class="huge-temp" id="t-display">--<span class="unit">°C</span></div>
                 <div class="huge-hum" id="h-val">--<span class="unit">%</span></div>
             </div>
-            <div class="feels">Pocitově : <span id="f-val">--</span>°</div>
+            <div class="feels">Pocitově : <span id="f-val">--</span><span style="font-size:0.8em">°C</span></div>
         </div>
 
-        <div class="card rain-card" onclick="showChart('precipRate', 'Srážky', '#ffffff')">
+        <div class="card rain-card">
             <i class="fas fa-cloud-showers-heavy watermark"></i>
             <div class="title">SRÁŽKY</div>
             <div style="font-size: 4.5em; font-weight: 900;" id="r-rate">--<span class="unit">mm/h</span></div>
-            <div class="rain-grid">
-                <div class="rain-sub"><label>DNES :</label><span id="r-day">--</span></div>
-                <div class="rain-sub"><label>TÝDEN :</label><span id="r-week">--</span></div>
-                <div class="rain-sub"><label>MĚSÍC :</label><span id="r-month">--</span></div>
-            </div>
+            <div style="font-size: 1.2em; font-weight: bold; margin-top: 10px;">Dnes: <span id="r-day">--</span> mm</div>
         </div>
 
-        <div class="card wind-card" onclick="showChart('windSpeed', 'Vítr', '#2d3436')">
+        <div class="card wind-card">
             <i class="fas fa-wind watermark"></i>
             <div class="title">VÍTR & TLAK</div>
             <div class="wind-box">
                 <div class="compass">
-                    <div id="arrow" class="arrow-red"></div>
+                    <div id="arrow-rot" class="arrow-wrapper">
+                        <div class="arrow-triangle"></div>
+                    </div>
                     <div style="text-align: center;">
                         <div class="wind-speed-val" id="w-speed">--</div>
                         <small>km/h</small>
@@ -111,14 +109,9 @@
         </div>
     </div>
 
-    <div id="chart-box" class="chart-container">
-        <canvas id="myChart"></canvas>
-    </div>
-
     <script>
         const apiKey = 'e0722080abc74485b22080abc7d485bb';
         const stationId = 'IPROVO14';
-        let weatherChart;
 
         async function update() {
             try {
@@ -127,56 +120,33 @@
                 const d = json.observations[0];
                 const m = d.metric;
 
-                const t = m.temp;
-                const tEl = document.getElementById('t-val');
-                tEl.innerHTML = t.toFixed(1) + '<span class="unit">°</span>';
-                
-                if(t < 0) tEl.style.color = 'var(--temp-cold)';
-                else if(t > 25) tEl.style.color = 'var(--temp-hot)';
-                else tEl.style.color = 'var(--temp-mid)';
+                // Formátování teploty (rozdělení na celé a desetinné)
+                const tempFull = m.temp.toFixed(1);
+                const parts = tempFull.split('.');
+                document.getElementById('t-display').innerHTML = `${parts[0]}<span class="decimal">.${parts[1]}</span><span class="unit">°C</span>`;
+
+                // Barva teploty
+                const tVal = m.temp;
+                const tDiv = document.getElementById('t-display');
+                if(tVal < 0) tDiv.style.color = 'var(--temp-cold)';
+                else if(tVal > 25) tDiv.style.color = 'var(--temp-hot)';
+                else tDiv.style.color = 'white';
 
                 document.getElementById('h-val').innerText = d.humidity;
                 document.getElementById('f-val').innerText = m.windChill.toFixed(1);
-                
                 document.getElementById('r-rate').innerHTML = m.precipRate.toFixed(1) + '<span class="unit">mm/h</span>';
-                document.getElementById('r-day').innerText = m.precipTotal.toFixed(1) + "mm";
-                document.getElementById('r-week').innerText = (m.precipTotal * 1.3).toFixed(1) + "mm";
-                document.getElementById('r-month').innerText = m.precipTotal.toFixed(1) + "mm";
-                
-                // AKTUALIZACE: Rychlost větru na 1 desetinné místo
+                document.getElementById('r-day').innerText = m.precipTotal.toFixed(1);
                 document.getElementById('w-speed').innerText = m.windSpeed.toFixed(1);
-                
                 document.getElementById('press').innerText = Math.round(m.pressure);
                 document.getElementById('uv').innerText = d.uv || 0;
-                document.getElementById('arrow').style.transform = `rotate(${d.winddir}deg)`;
-            } catch (e) { console.log("Chyba dat."); }
+
+                // Rotace šipky
+                document.getElementById('arrow-rot').style.transform = `rotate(${d.winddir}deg)`;
+            } catch (e) { console.log("Chyba při načítání dat."); }
         }
 
-        async function showChart(type, label, color) {
-            document.getElementById('chart-box').style.display = 'block';
-            try {
-                const res = await fetch(`https://api.weather.com/v2/pws/observations/hourly/7day?stationId=${stationId}&format=json&units=m&apiKey=${apiKey}`);
-                const json = await res.json();
-                const history = json.observations.slice(-72);
-                const labels = history.map(o => {
-                    const date = new Date(o.obsTimeLocal);
-                    return date.getHours() + ":00";
-                });
-                const values = history.map(o => o.metric[type] || o.metric.tempAvg || 0);
-
-                if (weatherChart) weatherChart.destroy();
-                weatherChart = new Chart(document.getElementById('myChart'), {
-                    type: 'line',
-                    data: {
-                        labels: labels,
-                        datasets: [{ label: label, data: values, borderColor: color, tension: 0.3, fill: false }]
-                    },
-                    options: { scales: { y: { ticks: { color: 'white' } }, x: { ticks: { color: 'white' } } } }
-                });
-            } catch (e) { console.log("Chyba grafu."); }
-        }
-
-        update(); setInterval(update, 300000);
+        update();
+        setInterval(update, 300000); // 5 minut
     </script>
 </body>
 </html>
